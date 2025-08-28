@@ -1,6 +1,7 @@
 import express from "express";
 import { User } from "../models/User.js";
-import { OAuth2client } from "google-auth-library";
+import pkg from "google-auth-library";
+const { OAuth2Client } = pkg;
 
 
 
@@ -50,15 +51,36 @@ router.delete("/users/:shortId", async (req, res) => {
 });
 
 //Google oauth
-const client = new OAuth2client(process.env.GOOGLE_CLIENT_ID);
-if (req.body.googleToken) {
-    const ticket = await client.verifyIdToken({
-        idToken: req.body.googleToken,
-        audience: process.env.GOOGLE_CLIENT_ID
-    });
-    const payload = ticket.getpayLoad();
-    const email = payload.email;
-}
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+router.post("/google-login", async (req, res) => {
+    try {
+        const { googleToken } = req.body;
+        if (!googleToken) {
+            return res.status(400).json({
+                message: "Google token is required",
+                
+            })
+        }
+        //verify token outside block
+        const ticket = await client.verifyIdToken({
+            idToken: googleToken,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        //use email to find or create user in DB
+
+        const payload = ticket.getPayload();
+        const email = payload.email;
+
+        res.json({
+            message: "Google login success", email
+        });
+
+    } catch (error) {
+        console.error("Google login error:", error);
+        res.status(401).json({ message: "Invalid Google token" });
+    }
+    
+});
 
 
 
