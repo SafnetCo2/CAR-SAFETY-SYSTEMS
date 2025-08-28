@@ -1,5 +1,8 @@
 import express from "express";
 import { User } from "../models/User.js";
+import { OAuth2client } from "google-auth-library";
+
+
 
 const router = express.Router();
 
@@ -45,5 +48,19 @@ router.delete("/users/:shortId", async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+
+//Google oauth
+const client = new OAuth2client(process.env.GOOGLE_CLIENT_ID);
+if (req.body.googleToken) {
+    const ticket = await client.verifyIdToken({
+        idToken: req.body.googleToken,
+        audience: process.env.GOOGLE_CLIENT_ID
+    });
+    const payload = ticket.getpayLoad();
+    const email = payload.email;
+}
+
+
+
 
 export default router;
