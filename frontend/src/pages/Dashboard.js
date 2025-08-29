@@ -1,8 +1,8 @@
 // src/pages/Dashboard.js
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import API from "../api/api"; // your axios instance
-import "../assets/CSS/Dashboard.css";
+import API from "../api/api"; // axios instance
+import "../assets/CSS/Dashboard.css"
 
 export default function Dashboard() {
     const [user, setUser] = useState(null);
@@ -11,10 +11,7 @@ export default function Dashboard() {
 
     useEffect(() => {
         const token = localStorage.getItem("token");
-        if (!token) {
-            navigate("/login");
-            return;
-        }
+        if (!token) return navigate("/login");
 
         try {
             const decoded = JSON.parse(atob(token.split(".")[1]));
@@ -23,28 +20,29 @@ export default function Dashboard() {
                 email: decoded.email,
                 picture: decoded.picture,
             });
-        } catch (err) {
+        } catch {
             setUser({ name: "Manual User", email: "manual@example.com" });
         }
 
-        // fetch stats from backend
+        // Fetch stats from backend
         const fetchStats = async () => {
             try {
-                const users = await API.get("/users");
-                const trips = await API.get("/trips");
-                const vehicles = await API.get("/vehicles");
-                const alerts = await API.get("/alerts");
+                const [usersRes, tripsRes, vehiclesRes, alertsRes] = await Promise.all([
+                    API.get("/users"),
+                    API.get("/trips"),
+                    API.get("/vehicles"),
+                    API.get("/alerts"),
+                ]);
                 setStats({
-                    users: users.data.length,
-                    trips: trips.data.length,
-                    vehicles: vehicles.data.length,
-                    alerts: alerts.data.length,
+                    users: usersRes.data.length,
+                    trips: tripsRes.data.length,
+                    vehicles: vehiclesRes.data.length,
+                    alerts: alertsRes.data.length,
                 });
             } catch (err) {
                 console.error("Failed to fetch stats:", err);
             }
         };
-
         fetchStats();
     }, [navigate]);
 
@@ -59,14 +57,15 @@ export default function Dashboard() {
         <div className="dashboard-container">
             {/* Sidebar */}
             <aside className="sidebar">
-                <div className="sidebar-logo">SaaS App</div>
+                <div className="sidebar-logo">Car Safety Systems</div>
                 <ul className="sidebar-menu">
                     <li>Dashboard</li>
-                    <li>Profile</li>
+                    <li>Users</li>
+                    <li>Vehicles</li>
+                    <li>Trips</li>
+                    <li>Alerts</li>
                     <li>Settings</li>
-                    <li onClick={handleLogout} style={{ cursor: "pointer", color: "red" }}>
-                        Logout
-                    </li>
+                    <li onClick={handleLogout} className="logout">Logout</li>
                 </ul>
             </aside>
 
@@ -75,29 +74,28 @@ export default function Dashboard() {
                 {/* Navbar */}
                 <nav className="navbar">
                     <div className="navbar-user">
-                        {user.picture && (
-                            <img src={user.picture} alt={user.name} className="user-avatar" />
-                        )}
+                        {user.picture && <img src={user.picture} alt={user.name} className="user-avatar" />}
                         <span>{user.name}</span>
                     </div>
                 </nav>
 
-                {/* Dashboard Body */}
+                {/* Dashboard body */}
                 <div className="dashboard-body">
                     <h1>Welcome, {user.name}!</h1>
                     <p>Email: {user.email}</p>
 
+                    {/* Stats cards */}
                     <div className="cards-container">
                         <div className="card">Users: {stats.users}</div>
-                        <div className="card">Trips: {stats.trips}</div>
                         <div className="card">Vehicles: {stats.vehicles}</div>
+                        <div className="card">Trips: {stats.trips}</div>
                         <div className="card">Alerts: {stats.alerts}</div>
                     </div>
                 </div>
 
                 {/* Footer */}
                 <footer className="footer">
-                    &copy; {new Date().getFullYear()} SaaS App. All rights reserved.
+                    &copy; {new Date().getFullYear()} Car Safety Systems. All rights reserved.
                 </footer>
             </div>
         </div>
