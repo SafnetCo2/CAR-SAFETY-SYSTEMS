@@ -1,7 +1,5 @@
 import express from "express";
 import { User } from "../models/User.js";
-import pkg from "google-auth-library";
-const { OAuth2Client } = pkg;
 
 
 
@@ -49,40 +47,6 @@ router.delete("/users/:shortId", async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
-
-//Google oauth
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-router.post("/google-login", async (req, res) => {
-    try {
-        const { googleToken } = req.body;
-        if (!googleToken) {
-            return res.status(400).json({
-                message: "Google token is required",
-                
-            })
-        }
-        //verify token outside block
-        const ticket = await client.verifyIdToken({
-            idToken: googleToken,
-            audience: process.env.GOOGLE_CLIENT_ID,
-        });
-        //use email to find or create user in DB
-
-        const payload = ticket.getPayload();
-        const email = payload.email;
-
-        res.json({
-            message: "Google login success", email
-        });
-
-    } catch (error) {
-        console.error("Google login error:", error);
-        res.status(401).json({ message: "Invalid Google token" });
-    }
-    
-});
-
-
 
 
 export default router;

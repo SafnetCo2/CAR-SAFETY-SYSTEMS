@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import Joi from 'joi';
-import {logger} from '../utils/logger.js'
+import { logger } from '../utils/logger.js';
 
 dotenv.config();
 
@@ -10,7 +10,8 @@ const envSchema = Joi.object({
     MONGO_URI: Joi.string().uri().required(),
     JWT_SECRET: Joi.string().min(32).required(),
     JWT_EXPIRES_IN: Joi.string().default('7d'),
-    CORS_ORIGIN: Joi.string().uri().default('http://localhost:5173'),
+    CORS_ORIGIN: Joi.string().uri().default('http://localhost:5000'),
+    GOOGLE_CLIENT_ID: Joi.string().required(),   // 👈 add this
 }).unknown();
 
 const { value: envVars, error } = envSchema.validate(process.env);
@@ -27,4 +28,5 @@ export const config = {
     jwtSecret: envVars.JWT_SECRET,
     jwtExpiresIn: envVars.JWT_EXPIRES_IN,
     corsOrigin: envVars.CORS_ORIGIN,
+    googleClientId: envVars.GOOGLE_CLIENT_ID,   // 👈 export it
 };
