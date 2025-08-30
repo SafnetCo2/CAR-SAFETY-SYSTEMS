@@ -1,0 +1,144 @@
+/* Navbar Container */
+.home-navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background: #007bff;
+    color: #fff;
+    flex-wrap: wrap; /* allow wrapping on small screens */
+}
+
+/* Logo */
+.home-navbar h1 {
+    font-size: 1.5rem;
+}
+
+/* Navigation links container */
+.home-navbar .nav-links {
+    display: flex; /* make links horizontal */
+    list-style: none;
+    gap: 20px;
+    padding-left: 0;
+    margin: 0;
+}
+
+/* Buttons inside navbar links */
+.home-navbar .nav-links li button {
+    background: #fff;
+    color: #007bff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+.home-navbar .nav-links li button:hover {
+    background: #e6e6e6;
+}
+
+/* Logout button */
+.home-navbar .nav-links li button.logout {
+    background: #f87171;
+    color: #fff;
+}
+
+.home-navbar .nav-links li button.logout:hover {
+    background: #dc2626;
+}
+
+/* User info */
+.home-navbar .user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.home-navbar .user-avatar {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+}
+
+/* Search bar */
+.home-navbar .navbar-search {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.home-navbar .navbar-search input {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: none;
+}
+
+.home-navbar .navbar-search button {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: none;
+    background: #fff;
+    color: #007bff;
+    cursor: pointer;
+}
+
+/* Autocomplete dropdown */
+.home-navbar .autocomplete-list {
+    position: absolute;
+    background: #fff;
+    color: #000;
+    border-radius: 6px;
+    margin-top: 5px;
+    max-height: 200px;
+    overflow-y: auto;
+    width: 200px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    z-index: 1000;
+}
+
+.home-navbar .autocomplete-list li {
+    padding: 8px 10px;
+    cursor: pointer;
+}
+
+.home-navbar .autocomplete-list li:hover {
+    background: #f0f0f0;
+}
+
+/* Menu toggle for mobile */
+.home-navbar .menu-toggle {
+    display: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .home-navbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .home-navbar .nav-links {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .home-navbar .nav-links li button {
+        width: 100%;
+    }
+
+    .home-navbar .menu-toggle {
+        display: block;
+    }
+
+    .home-navbar .navbar-right.active {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+    }
+}

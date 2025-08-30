@@ -4,17 +4,53 @@ import { useNavigate } from "react-router-dom";
 import API from "../api/api";
 import "../assets/CSS/dashboard.css";
 import { Line } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend,
+} from "chart.js";
 
 // Icons
-import { FaBars, FaTachometerAlt, FaUsers, FaCar, FaRoute, FaBell, FaCog, FaSignOutAlt } from "react-icons/fa";
+import {
+    FaBars,
+    FaTimes,
+    FaTachometerAlt,
+    FaUsers,
+    FaCar,
+    FaRoute,
+    FaBell,
+    FaCog,
+    FaSignOutAlt,
+} from "react-icons/fa";
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+// Navbar component
+import Navbar from "../components/Navbar";
+
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend
+);
 
 export default function Dashboard() {
     const [user, setUser] = useState(null);
-    const [stats, setStats] = useState({ users: 0, trips: 0, vehicles: 0, alerts: 0 });
+    const [stats, setStats] = useState({
+        users: 0,
+        trips: 0,
+        vehicles: 0,
+        alerts: 0,
+    });
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [lastUpdated, setLastUpdated] = useState(null); // <--- added
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -47,6 +83,7 @@ export default function Dashboard() {
                     vehicles: vehicles.data.length,
                     alerts: alerts.data.length,
                 });
+                setLastUpdated(new Date().toLocaleString()); // <--- update lastUpdated
             } catch (err) {
                 console.error("Failed to fetch stats:", err);
             }
@@ -74,10 +111,19 @@ export default function Dashboard() {
     };
 
     return (
-        <div className={`dashboard-container ${sidebarOpen ? "sidebar-open" : ""}`}>
+        <div className="dashboard-container">
             {/* Sidebar */}
             <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
-                <div className="sidebar-logo">Car Safety Systems</div>
+                <div className="sidebar-header">
+                    <div className="sidebar-logo">Car Safety Systems</div>
+                    <button
+                        className="sidebar-toggle"
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                    >
+                        {sidebarOpen ? <FaTimes /> : <FaBars />}
+                    </button>
+                </div>
+
                 <ul className="sidebar-menu">
                     <li><FaTachometerAlt /> Dashboard</li>
                     <li><FaUsers /> Users</li>
@@ -90,16 +136,14 @@ export default function Dashboard() {
             </aside>
 
             {/* Main Content */}
-            <div className="main-content">
-                <nav className="navbar">
-                    <button className="hamburger" onClick={() => setSidebarOpen(!sidebarOpen)}>
-                        <FaBars />
-                    </button>
-                    <div className="navbar-user">
-                        {user.picture && <img src={user.picture} alt={user.name} className="user-avatar" />}
-                        <span>{user.name}</span>
-                    </div>
-                </nav>
+            <div className={`main-content ${sidebarOpen ? "shifted" : ""}`}>
+                {/* Navbar */}
+                <Navbar
+                    sidebarOpen={sidebarOpen}
+                    setSidebarOpen={setSidebarOpen}
+                    onSearch={(query) => console.log("Search query:", query)}
+                    suggestionsData={["Users", "Trips", "Vehicles", "Alerts", "Settings", "Drivers"]}
+                />
 
                 <div className="dashboard-body">
                     <div className="cards-container">
@@ -119,11 +163,14 @@ export default function Dashboard() {
                         <p>Unlock advanced analytics and alerts</p>
                         <button>Upgrade Now</button>
                     </div>
-                </div>
 
-                <footer className="footer">
-                    &copy; {new Date().getFullYear()} Car Safety Systems. All rights reserved.
-                </footer>
+                    <footer className="footer">
+                        &copy; {new Date().getFullYear()} Car Safety Systems. All rights reserved.
+                        {lastUpdated && (
+                            <div className="last-updated">Last Updated: {lastUpdated}</div>
+                        )}
+                    </footer>
+                </div>
             </div>
         </div>
     );
