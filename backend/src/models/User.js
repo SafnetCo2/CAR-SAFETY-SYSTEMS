@@ -1,31 +1,57 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+import { nanoid } from "nanoid";
 
-const userSchema = new mongoose.Schema({
-    email: { type: String, required: true, unique: true, lowercase: true, index: true },
-    password: { type: String, required: true },
-    role: { type: String, enum: ['user', 'admin'], default: 'user' },
-    name: String,
-    company: String,
-    country: { type: String, default: 'US' },
-    shortId: { type: String, unique: true, index: true }, // <-- added
-}, { timestamps: true });
+const userSchema = new mongoose.Schema(
+    {
+        name: {
+            type: String,
+            required: function () {
+                return !this.googleId; // required only for manual users
+            },
+            trim: true,
+        },
+        email: {
+            type: String,
+            required: true,
+            unique: true,
+            lowercase: true,
+            trim: true,
+        },
+        password: {
+            type: String,
+            minlength: 6,
+            select: false, // don't return password by default
+        },
+        shortId: { type: String, unique: true, default: () => nanoid(8) },
+        googleId: {
+            type: String,
+            default: null,
+        },
+        picture: { type: String, default: null },
+        company: { type: String, default: null },
+        country: { type: String, default: null },
+        role: {
+            type: String,
+            enum: ["user", "admin"],
+            default: "user",
+        },
+    },
+    { timestamps: true }
+);
 
-// Generate shortId before saving if missing
-userSchema.pre('save', async function (next) {
-    if (!this.shortId) {
-        this.shortId = Math.random().toString(36).substring(2, 8); // 6-char shortId
-    }
-
-    if (!this.isModified('password')) return next();
+// Hash password before saving
+userSchema.pre("save", async function (next) {
+    if (!this.isModified("password")) return next();
     this.password = await bcrypt.hash(this.password, 10);
     next();
 });
 
-// Password comparison method
-userSchema.methods.comparePassword = function (pw) {
-    return bcrypt.compare(pw, this.password);
+// Compare entered password with hashed password
+userSchema.methods.matchPassword = async function (enteredPassword) {
+    return bcrypt.compare(enteredPassword, this.password);
 };
 
-export const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
+
 export default User;

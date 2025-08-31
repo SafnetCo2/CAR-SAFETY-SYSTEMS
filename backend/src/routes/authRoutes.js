@@ -1,95 +1,102 @@
 import express from "express";
-import { User } from "../models/User.js";
-import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
+import User from "../models/User.js";
 import { config } from "../config/config.js";
-import pkg from "google-auth-library";
 
-const { OAuth2Client } = pkg;
 const router = express.Router();
-const client = new OAuth2Client(config.googleClientId);
+const googleClient = new OAuth2Client(config.googleClientId);
 
-// ------------------ Register ------------------
+// Generate JWT
+const generateToken = (user) => {
+    return jwt.sign({ id: user._id, email: user.email }, config.jwtSecret, {
+        expiresIn: "1h",
+    });
+};
+
+// ---------- Register ----------
 router.post("/register", async (req, res) => {
     try {
-        const { email, password, name, company, country, role } = req.body;
+        const { name, email, password, role, company, country } = req.body;
 
         const existingUser = await User.findOne({ email });
         if (existingUser)
             return res.status(400).json({ message: "Email already exists" });
 
-        const user = new User({ email, password, name, company, country, role });
-
-        if (!user.shortId) {
-            user.shortId = Math.random().toString(36).substring(2, 8);
-        }
-
-        await user.save();
+        const user = await User.create({
+            name,
+            email,
+            password, // will be hashed automatically by pre-save hook
+            role,
+            company,
+            country,
+        });
 
         res.status(201).json({
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            country: user.country,
-            shortId: user.shortId,
-            createdAt: user.createdAt,
+            message: "User registered successfully",
+            token: generateToken(user),
+            user,
         });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 });
 
-// ------------------ Login ------------------
+// ---------- Manual Login ----------
 router.post("/login", async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = await User.findOne({ email });
-        if (!user) return res.status(404).json({ message: "User not found" });
 
-        const isMatch = await user.comparePassword(password);
-        if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+        // explicitly include password
+        const user = await User.findOne({ email }).select("+password");
+        if (!user) return res.status(400).json({ message: "Invalid email or password" });
+
+        const isMatch = await user.matchPassword(password);
+        if (!isMatch) return res.status(400).json({ message: "Invalid email or password" });
+
+        user.password = undefined; // hide password in response
 
         res.json({
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            country: user.country,
-            shortId: user.shortId,
-            createdAt: user.createdAt,
+            message: "Login successful",
+            token: generateToken(user),
+            user,
         });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 });
 
-// ------------------ Google OAuth (Popup) ------------------
+// ---------- Google Login ----------
 router.post("/google-login", async (req, res) => {
     try {
-        const { googleToken } = req.body;
-        if (!googleToken) return res.status(400).json({ message: "Google token is required" });
+        const { credential } = req.body;
+        if (!credential)
+            return res.status(400).json({ message: "Google credential required" });
 
-        const ticket = await client.verifyIdToken({
-            idToken: googleToken,
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
             audience: config.googleClientId,
         });
 
         const payload = ticket.getPayload();
-        const email = payload.email;
 
-        // Optional: find or create user in DB
-        let user = await User.findOne({ email });
+        let user = await User.findOne({ email: payload.email });
         if (!user) {
-            user = new User({ email, name: payload.name || "Google User" });
-            await user.save();
+            user = await User.create({
+                name: payload.name,
+                email: payload.email,
+                picture: payload.picture,
+                googleId: payload.sub,
+            });
         }
 
         res.json({
-            message: "Google login success",
-            email,
-            shortId: user.shortId,
+            message: "Google login successful",
+            token: generateToken(user),
+            user,
         });
     } catch (error) {
-        console.error("Google login error:", error);
-        res.status(401).json({ message: "Invalid Google token" });
+        res.status(500).json({ message: "Google login failed", error: error.message });
     }
 });
 

@@ -3,8 +3,7 @@ import bcrypt from 'bcryptjs';
 import shortid from 'shortid';
 import { config } from './src/config/config.js';
 import { logger } from './src/utils/logger.js';
-
-import { User } from './src/models/User.js';
+import User from './src/models/User.js';
 import { Vehicle } from './src/models/Vehicle.js';
 
 async function seed() {
