@@ -50,7 +50,7 @@ export default function Dashboard() {
         alerts: 0,
     });
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [lastUpdated, setLastUpdated] = useState(null); // <--- added
+    const [lastUpdated, setLastUpdated] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -60,34 +60,36 @@ export default function Dashboard() {
             return;
         }
 
-        try {
-            const decoded = JSON.parse(atob(token.split(".")[1]));
-            setUser({
-                name: decoded.name,
-                email: decoded.email,
-                picture: decoded.picture,
-            });
-        } catch {
+        const userData = JSON.parse(localStorage.getItem("user"));
+        if (userData) {
+            setUser(userData);
+        } else {
             setUser({ name: "Manual User", email: "manual@example.com" });
         }
 
         const fetchStats = async () => {
             try {
-                const users = await API.get("/users");
-                const trips = await API.get("/trips");
-                const vehicles = await API.get("/vehicles");
-                const alerts = await API.get("/alerts");
+                const config = {
+                    headers: { Authorization: `Bearer ${token}` },
+                };
+
+                const users = await API.get("/api/users", config);
+                const trips = await API.get("/api/trips", config);
+                const vehicles = await API.get("/api/vehicles", config);
+                const alerts = await API.get("/api/alerts", config);
+
                 setStats({
                     users: users.data.length,
                     trips: trips.data.length,
                     vehicles: vehicles.data.length,
                     alerts: alerts.data.length,
                 });
-                setLastUpdated(new Date().toLocaleString()); // <--- update lastUpdated
+                setLastUpdated(new Date().toLocaleString());
             } catch (err) {
                 console.error("Failed to fetch stats:", err);
             }
         };
+
         fetchStats();
     }, [navigate]);
 

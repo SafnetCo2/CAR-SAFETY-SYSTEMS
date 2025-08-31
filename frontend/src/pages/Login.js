@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
-import "../assets/CSS/login.css"; // import your CSS file
+import API from "../api/api";
+import "../assets/CSS/login.css";
 
 export default function Login() {
     const [user, setUser] = useState(null);
@@ -10,36 +11,47 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    // Manual login
+    // ---------- Manual login ----------
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+
         try {
-            const token = "manual-login-token"; // replace with real API call
+            const res = await API.post("/api/auth/login", { email, password });
+            const { user, token } = res.data;
+
             localStorage.setItem("token", token);
-            alert(`Logged in as ${email}`);
+            localStorage.setItem("user", JSON.stringify(user)); // save user for Dashboard
+            setUser(user);
             navigate("/dashboard");
         } catch (err) {
             console.error(err);
-            alert("Login failed");
+            alert(err.response?.data?.message || "Login failed");
         } finally {
             setLoading(false);
         }
     };
 
-    // Google login
-    const handleGoogleLogin = (credentialResponse) => {
+    // ---------- Google login ----------
+    const handleGoogleLogin = async (response) => {
+        console.log("Google credential:", response.credential);
+
         try {
-            const decoded = JSON.parse(
-                atob(credentialResponse.credential.split(".")[1])
-            );
-            setUser(decoded);
-            localStorage.setItem("token", credentialResponse.credential);
-            alert(`Logged in as ${decoded.email}`);
+            const res = await API.post("/api/auth/google-login", {
+                credential: response.credential, // must match backend
+            });
+
+            const { user, token } = res.data;
+
+            // Save both token and user to localStorage
+            localStorage.setItem("token", token);
+            localStorage.setItem("user", JSON.stringify(user)); // <--- FIX HERE
+
+            setUser(user);
             navigate("/dashboard");
         } catch (err) {
             console.error("Google login failed:", err);
-            alert("Google login failed");
+            alert(err.response?.data?.message || "Google login failed");
         }
     };
 
@@ -50,7 +62,6 @@ export default function Login() {
 
                 {!user && (
                     <>
-                        {/* Manual login form */}
                         <form onSubmit={handleSubmit} className="login-form">
                             <input
                                 type="email"
@@ -85,14 +96,6 @@ export default function Login() {
                             Don’t have an account? <Link to="/register">Signup</Link>
                         </p>
                     </>
-                )}
-
-                {user && (
-                    <div className="google-user">
-                        {user.picture && <img src={user.picture} alt={user.name} />}
-                        <h3>{user.name}</h3>
-                        <p>{user.email}</p>
-                    </div>
                 )}
             </div>
         </div>

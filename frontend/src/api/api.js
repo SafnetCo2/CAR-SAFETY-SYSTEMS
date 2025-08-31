@@ -1,30 +1,18 @@
+// src/api/api.js
 import axios from "axios";
 
-//base url of backend
+// Set API base URL depending on environment
+const API_BASE =
+    process.env.NODE_ENV === "production"
+        ? "https://car-safety-systems.onrender.com" // Replace with your actual Render backend URL
+        : "http://localhost:5000"; // Local backend during development
+
+// Create Axios instance
 const API = axios.create({
-    baseURL: 'https://car-safety-systems.onrender.com/api',
+    baseURL: API_BASE,
     headers: {
-    'Content-Type':'application/json',
+        "Content-Type": "application/json",
     },
 });
-// add JWT token automatically if stored
-API.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-});
 
-//Auth
-export const loginUser = (data) => API.post('/users/login', data);
-export const registerUser = (data) => API.post('/users/register', data);
-//vehicles
-export const getVehicles = () => API.get('/vehicles');
-export const addVehicle = (vehicle) => API.post('/vehicles', vehicle);
-export const updateVehicle = (id, vehicle) => API.post(`/vehicles/${id}`, vehicle);
-export const deleteVehicle = (id) => API.delete(`/vehicles/${id}`);
-
-
-//admin
-export const getAllUsers = () => API.get('/users');
-export const deleteUser = (id) => API.delete(`/users/${id}`);
-export default API
+export default API;
