@@ -1,16 +1,16 @@
 import express from "express";
-import userRoutes from "./userRoutes.js";
 import authRoutes from "./authRoutes.js";
-import adminRoutes from "./adminRoutes.js";
-import tripRoutes from "./tripRoute.js";
-import vehicleRoutes from "./vehicleRoutes.js";
+import userRoutes from "./user.js";
+import tripRoutes from "./trips.js";
+import vehicleRoutes from "./vehicles.js";
+import alertRoutes from "./alerts.js";
 
 const router = express.Router();
 
-router.use("/user", userRoutes);  // <-- dedicated user routes
 router.use("/auth", authRoutes);
-router.use("/admin", adminRoutes);
-router.use("/trip", tripRoutes);
-router.use("/vehicle", vehicleRoutes);
+router.use("/users", userRoutes);
+router.use("/trips", tripRoutes);
+router.use("/vehicles", vehicleRoutes);
+router.use("/alerts", alertRoutes);
 
 export default router;

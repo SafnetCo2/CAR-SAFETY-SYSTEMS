@@ -9,28 +9,32 @@ import adminMiddleware from "../middleware/adminMiddleware.js";
 const router = express.Router();
 const googleClient = new OAuth2Client(config.googleClientId);
 
-// ---------- DEBUG: Check if secrets are loaded ----------
-console.log("Loaded JWT_SECRET:", config.jwtSecret);
-console.log("Loaded JWT_REFRESH_SECRET:", config.jwtRefreshSecret);
-
-// ---------- JWT GENERATORS ----------
+// ---------- JWT Generators ----------
 const generateAccessToken = (user) =>
-    jwt.sign({ id: user._id, email: user.email, role: user.role }, config.jwtSecret, {
-        expiresIn: config.jwtExpiresIn,
-    });
+    jwt.sign(
+        { id: user._id, email: user.email, role: user.role },
+        config.jwtSecret,
+        { expiresIn: config.jwtExpiresIn || "1h" }
+    );
 
 const generateRefreshToken = (user) =>
-    jwt.sign({ id: user._id }, config.jwtRefreshSecret, { expiresIn: config.jwtRefreshExpiresIn });
+    jwt.sign({ id: user._id }, config.jwtRefreshSecret, {
+        expiresIn: config.jwtRefreshExpiresIn || "7d",
+    });
 
-// ---------- REGISTER ----------
+// ---------- AUTH ROUTES ----------
+
+// Register new user
 router.post("/register", async (req, res) => {
     try {
         const { name, email, password, role, company, country } = req.body;
+
         const existingUser = await User.findOne({ email });
         if (existingUser)
             return res.status(400).json({ message: "Email already exists" });
 
         const user = await User.create({ name, email, password, role, company, country });
+
         res.status(201).json({
             message: "User registered successfully",
             user: { ...user.toObject(), password: undefined },
@@ -42,10 +46,11 @@ router.post("/register", async (req, res) => {
     }
 });
 
-// ---------- LOGIN ----------
+// Manual login
 router.post("/login", async (req, res) => {
     try {
         const { email, password } = req.body;
+
         const user = await User.findOne({ email }).select("+password");
         if (!user) return res.status(401).json({ message: "Invalid email or password" });
 
@@ -53,6 +58,7 @@ router.post("/login", async (req, res) => {
         if (!isMatch) return res.status(401).json({ message: "Invalid email or password" });
 
         user.password = undefined;
+
         res.json({
             message: "Login successful",
             user,
@@ -64,7 +70,7 @@ router.post("/login", async (req, res) => {
     }
 });
 
-// ---------- GOOGLE LOGIN ----------
+// Google login
 router.post("/google-login", async (req, res) => {
     try {
         const { credential } = req.body;
@@ -88,6 +94,7 @@ router.post("/google-login", async (req, res) => {
         }
 
         user.password = undefined;
+
         res.json({
             message: "Google login successful",
             user,
@@ -99,34 +106,94 @@ router.post("/google-login", async (req, res) => {
     }
 });
 
-// ---------- REFRESH TOKEN ----------
+ 
+
+
+
+
+
+
+
+
+// Refresh token
 router.post("/refresh-token", async (req, res) => {
-    const { refreshToken } = req.body;
-    if (!refreshToken) return res.status(401).json({ message: "No token provided" });
-
     try {
-        const payload = jwt.verify(refreshToken, config.jwtRefreshSecret);
-        const user = await User.findById(payload.id);
-        if (!user) return res.status(404).json({ message: "User not found" });
+        const { refreshToken } = req.body;
+        if (!refreshToken) return res.status(400).json({ message: "Refresh token required" });
 
-        const newToken = generateAccessToken(user);
-        res.json({ accessToken: newToken });
+        const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret);
+        const user = await User.findById(decoded.id).select("-password");
+        if (!user) return res.status(401).json({ message: "User not found" });
+
+        res.json({ accessToken: generateAccessToken(user) });
     } catch (err) {
-        return res.status(403).json({ message: "Invalid refresh token" });
+        res.status(401).json({ message: "Invalid or expired refresh token" });
     }
 });
 
-// ---------- ADMIN: CREATE USER ----------
+// ---------- USER ROUTES ----------
+
+// Get current user profile
+router.get("/profile/me", protect, async (req, res) => {
+    res.json(req.user);
+});
+
+// Get all users (admin only)
+router.get("/", protect, adminMiddleware, async (req, res) => {
+    try {
+        const users = await User.find().select("-password");
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Get single user by shortId
+router.get("/:shortId", protect, async (req, res) => {
+    try {
+        const user = await User.findOne({ shortId: req.params.shortId }).select("-password");
+        if (!user) return res.status(404).json({ message: "User not found" });
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Update user by shortId (self or admin)
+router.put("/:shortId", protect, async (req, res) => {
+    try {
+        const user = await User.findOne({ shortId: req.params.shortId });
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        if (req.user.role !== "admin" && req.user._id.toString() !== user._id.toString()) {
+            return res.status(403).json({ message: "Access denied" });
+        }
+
+        Object.assign(user, req.body);
+        await user.save();
+        user.password = undefined;
+        res.json(user);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// Delete user by shortId (admin only)
+router.delete("/:shortId", protect, adminMiddleware, async (req, res) => {
+    try {
+        const user = await User.findOneAndDelete({ shortId: req.params.shortId });
+        if (!user) return res.status(404).json({ message: "User not found" });
+        res.json({ message: "User deleted successfully" });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Create user (admin only)
 router.post("/", protect, adminMiddleware, async (req, res) => {
     try {
-        const { name, email, password, role, company, country } = req.body;
-
-        const existingUser = await User.findOne({ email });
-        if (existingUser) return res.status(400).json({ message: "Email already exists" });
-
-        const user = new User({ name, email, password, role, company, country });
+        const user = new User(req.body);
         if (!user.shortId) user.shortId = Math.random().toString(36).substring(2, 8);
-
         await user.save();
         user.password = undefined;
         res.status(201).json(user);

@@ -18,10 +18,13 @@ export default function Login() {
 
         try {
             const res = await API.post("/api/auth/login", { email, password });
-            const { user, token } = res.data;
+            const { user, accessToken, refreshToken } = res.data;
 
-            localStorage.setItem("token", token);
-            localStorage.setItem("user", JSON.stringify(user)); // save user for Dashboard
+            // Save tokens and user info
+            localStorage.setItem("token", accessToken);
+            localStorage.setItem("refreshToken", refreshToken);
+            localStorage.setItem("user", JSON.stringify(user));
+
             setUser(user);
             navigate("/dashboard");
         } catch (err) {
@@ -38,14 +41,15 @@ export default function Login() {
 
         try {
             const res = await API.post("/api/auth/google-login", {
-                credential: response.credential, // must match backend
+                credential: response.credential,
             });
 
-            const { user, token } = res.data;
+            const { user, accessToken, refreshToken } = res.data;
 
-            // Save both token and user to localStorage
-            localStorage.setItem("token", token);
-            localStorage.setItem("user", JSON.stringify(user)); // <--- FIX HERE
+            // Save tokens and user info
+            localStorage.setItem("token", accessToken);
+            localStorage.setItem("refreshToken", refreshToken);
+            localStorage.setItem("user", JSON.stringify(user));
 
             setUser(user);
             navigate("/dashboard");
