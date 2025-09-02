@@ -1,14 +1,13 @@
+import dotenv from "dotenv";
+dotenv.config(); // Load .env first
+
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import dotenv from "dotenv";
-import routes from "./routes/index.js";
 import { config } from "./config/config.js";
-
-dotenv.config();
+import routes from "./routes/index.js";
 
 const app = express();
-const PORT = config.port || 5000;
 
 // ===== CORS =====
 app.use(cors({
@@ -34,4 +33,4 @@ mongoose.connect(config.mongoUri)
     .catch(err => console.log("MongoDB connection error:", err));
 
 // ===== Start Server =====
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(config.port, () => console.log(`Server running on port ${config.port}`));
