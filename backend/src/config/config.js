@@ -1,13 +1,13 @@
+// src/config/config.js
 import dotenv from "dotenv";
 import Joi from "joi";
 
 dotenv.config();
 
-// ===== Validate environment variables =====
 const envSchema = Joi.object({
     NODE_ENV: Joi.string().valid("development", "production", "test").default("development"),
     PORT: Joi.number().default(5000),
-    MONGO_URI: Joi.string().required(),
+    MONGO_URI: Joi.string().uri().required(),
     JWT_SECRET: Joi.string().min(32).required(),
     JWT_REFRESH_SECRET: Joi.string().min(32).required(),
     JWT_EXPIRES_IN: Joi.string().default("7d"),
@@ -17,14 +17,13 @@ const envSchema = Joi.object({
 }).unknown();
 
 const { value: envVars, error } = envSchema.validate(process.env);
-
 if (error) {
     console.error(`Config validation error: ${error.message}`);
     process.exit(1);
 }
 
-// Split comma-separated CORS origins into array
-const allowedOrigins = envVars.CORS_ORIGINS.split(",");
+// Only your frontend URLs
+const allowedOrigins = envVars.CORS_ORIGINS.split(",").map(u => u.trim());
 
 export const config = {
     env: envVars.NODE_ENV,

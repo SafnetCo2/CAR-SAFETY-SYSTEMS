@@ -1,18 +1,20 @@
-import dotenv from "dotenv";
-dotenv.config(); // Load .env first
-
+// src/server.js
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import { config } from "./config/config.js";
+import dotenv from "dotenv";
 import routes from "./routes/index.js";
+import { config } from "./config/config.js";
+
+dotenv.config();
 
 const app = express();
 
 // ===== CORS =====
 app.use(cors({
-    origin: function (origin, callback) {
-        if (!origin) return callback(null, true); // allow Postman or server-to-server
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true); // Postman/server-to-server
+        // Only allow requests from your frontend URLs
         if (!config.corsOrigin.includes(origin)) {
             return callback(new Error(`CORS policy: ${origin} not allowed`), false);
         }
@@ -27,10 +29,10 @@ app.use(express.json());
 // ===== Routes =====
 app.use("/api", routes);
 
-// ===== MongoDB Connection =====
+// ===== MongoDB =====
 mongoose.connect(config.mongoUri)
     .then(() => console.log("MongoDB connected"))
-    .catch(err => console.log("MongoDB connection error:", err));
+    .catch(err => console.error("MongoDB connection error:", err));
 
 // ===== Start Server =====
 app.listen(config.port, () => {
