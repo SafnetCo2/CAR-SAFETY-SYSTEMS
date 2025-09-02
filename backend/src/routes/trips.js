@@ -10,7 +10,8 @@ router.get("/", protect, async (req, res) => {
         return res.status(403).json({ message: "Admin access only" });
     }
     try {
-        const trips = await Trip.find().populate("userId vehicleId", "-password");
+        const trips = await Trip.find()
+            .populate("userId vehicleId", "-password");
         res.json(trips);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -20,7 +21,8 @@ router.get("/", protect, async (req, res) => {
 // ------------------ GET SINGLE TRIP BY ID ------------------
 router.get("/:id", protect, async (req, res) => {
     try {
-        const trip = await Trip.findById(req.params.id).populate("userId vehicleId", "-password");
+        const trip = await Trip.findById(req.params.id)
+            .populate("userId vehicleId", "-password");
         if (!trip) return res.status(404).json({ message: "Trip not found" });
         res.json(trip);
     } catch (error) {
@@ -31,8 +33,18 @@ router.get("/:id", protect, async (req, res) => {
 // ------------------ CREATE TRIP ------------------
 router.post("/", protect, async (req, res) => {
     try {
-        const { userId, vehicleId, startLocation, endLocation, startTime, endTime, status } = req.body;
-        const trip = new Trip({ userId, vehicleId, startLocation, endLocation, startTime, endTime, status });
+        const { vehicleId, startLocation, endLocation, startTime, endTime, status } = req.body;
+
+        const trip = new Trip({
+            userId: req.user._id, // always link trip to logged in user
+            vehicleId: vehicleId || null, // allow null vehicle if not provided
+            startLocation,
+            endLocation,
+            startTime,
+            endTime,
+            status: status || "ongoing"
+        });
+
         await trip.save();
         res.status(201).json(trip);
     } catch (error) {
@@ -46,7 +58,8 @@ router.put("/:id", protect, async (req, res) => {
         const trip = await Trip.findById(req.params.id);
         if (!trip) return res.status(404).json({ message: "Trip not found" });
 
-        if (req.user.role !== "admin" && trip.userId.toString() !== req.user._id.toString()) {
+        // Only admin or trip owner can update
+        if (req.user.role !== "admin" && trip.userId?.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: "Access denied" });
         }
 
@@ -64,11 +77,12 @@ router.delete("/:id", protect, async (req, res) => {
         const trip = await Trip.findById(req.params.id);
         if (!trip) return res.status(404).json({ message: "Trip not found" });
 
-        if (req.user.role !== "admin" && trip.userId.toString() !== req.user._id.toString()) {
+        // Only admin or trip owner can delete
+        if (req.user.role !== "admin" && trip.userId?.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: "Access denied" });
         }
 
-        await trip.remove();
+        await Trip.findByIdAndDelete(req.params.id);
         res.json({ message: "Trip deleted successfully" });
     } catch (error) {
         res.status(500).json({ message: error.message });

@@ -5,7 +5,9 @@
     "cors": "^2.8.5",
     "framer-motion": "^12.23.12",
     "jwt-decode": "^4.0.0",
+    "leaflet": "^1.9.4",
     "react-hook-form": "^7.62.0",
+    "react-leaflet": "^5.0.0",
     "react-redux": "^9.2.0",
     "sass": "^1.91.0",
     "shortid": "^2.2.17"

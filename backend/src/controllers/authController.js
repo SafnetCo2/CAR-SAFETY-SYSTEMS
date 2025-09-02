@@ -24,6 +24,8 @@ export const googleLogin = async (req, res) => {
                 email,
                 picture,
                 provider: "google",
+                role: email === "kimmyjmueni@gmail.com" ? "admin" : "user"
+                    
             });
         }
 
