@@ -33,4 +33,7 @@ mongoose.connect(config.mongoUri)
     .catch(err => console.log("MongoDB connection error:", err));
 
 // ===== Start Server =====
-app.listen(config.port, () => console.log(`Server running on port ${config.port}`));
+app.listen(config.port, () => {
+    console.log(`Server running on port ${config.port}`);
+    console.log("CORS allowed origins:", config.corsOrigin);
+});

@@ -1,18 +1,18 @@
 import dotenv from "dotenv";
 import Joi from "joi";
 
-dotenv.config(); // Load env variables first
+dotenv.config();
 
 // ===== Validate environment variables =====
 const envSchema = Joi.object({
     NODE_ENV: Joi.string().valid("development", "production", "test").default("development"),
     PORT: Joi.number().default(5000),
-    MONGO_URI: Joi.string().uri().required(),
+    MONGO_URI: Joi.string().required(),
     JWT_SECRET: Joi.string().min(32).required(),
     JWT_REFRESH_SECRET: Joi.string().min(32).required(),
     JWT_EXPIRES_IN: Joi.string().default("7d"),
     JWT_REFRESH_EXPIRES_IN: Joi.string().default("7d"),
-    CORS_ORIGINS: Joi.string().required(), // comma-separated list
+    CORS_ORIGINS: Joi.string().required(), // comma-separated
     GOOGLE_CLIENT_ID: Joi.string().required(),
 }).unknown();
 
@@ -23,8 +23,8 @@ if (error) {
     process.exit(1);
 }
 
-// Split comma-separated origins into an array
-const allowedOrigins = envVars.CORS_ORIGINS.split(",").map(origin => origin.trim());
+// Split comma-separated CORS origins into array
+const allowedOrigins = envVars.CORS_ORIGINS.split(",");
 
 export const config = {
     env: envVars.NODE_ENV,
