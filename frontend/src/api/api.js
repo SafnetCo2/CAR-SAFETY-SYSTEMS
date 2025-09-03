@@ -1,26 +1,15 @@
+// src/api/api.js
 import axios from "axios";
 
-const API_BASE =
-    process.env.NODE_ENV === "production"
-        ? "https://car-safety-system.onrender.com"
-        : "http://localhost:5000";
+// Replace with your deployed backend URL
+const API_BASE = "https://car-safety-systems-1.onrender.com";
 
 const API = axios.create({
     baseURL: API_BASE,
     headers: {
         "Content-Type": "application/json",
     },
+    withCredentials: false, // set true only if backend uses cookies
 });
-
-API.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem("token");
-        if (token) {
-            config.headers["Authorization"] = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
 
 export default API;
