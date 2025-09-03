@@ -1,70 +1,23 @@
 import express from "express";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import { config } from "../config/config.js";
-import { protect } from "../middleware/auth.js";
-import adminMiddleware from "../middleware/adminMiddleware.js";
 
 const router = express.Router();
 const googleClient = new OAuth2Client(config.googleClientId);
 
-// ---------- DEBUG: Check if secrets are loaded ----------
-console.log("Loaded JWT_SECRET:", config.jwtSecret);
-console.log("Loaded JWT_REFRESH_SECRET:", config.jwtRefreshSecret);
-
-// ---------- JWT GENERATORS ----------
+// JWT generators
 const generateAccessToken = (user) =>
-    jwt.sign({ id: user._id, email: user.email, role: user.role }, config.jwtSecret, {
+    jwt.sign({ id: user._id, email: user.email, role: user.role || "user" }, config.jwtSecret, {
         expiresIn: config.jwtExpiresIn,
     });
 
 const generateRefreshToken = (user) =>
     jwt.sign({ id: user._id }, config.jwtRefreshSecret, { expiresIn: config.jwtRefreshExpiresIn });
 
-// ---------- REGISTER ----------
-router.post("/register", async (req, res) => {
-    try {
-        const { name, email, password, role, company, country } = req.body;
-        const existingUser = await User.findOne({ email });
-        if (existingUser)
-            return res.status(400).json({ message: "Email already exists" });
-
-        const user = await User.create({ name, email, password, role, company, country });
-        res.status(201).json({
-            message: "User registered successfully",
-            user: { ...user.toObject(), password: undefined },
-            accessToken: generateAccessToken(user),
-            refreshToken: generateRefreshToken(user),
-        });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
-// ---------- LOGIN ----------
-router.post("/login", async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const user = await User.findOne({ email }).select("+password");
-        if (!user) return res.status(401).json({ message: "Invalid email or password" });
-
-        const isMatch = await user.matchPassword(password);
-        if (!isMatch) return res.status(401).json({ message: "Invalid email or password" });
-
-        user.password = undefined;
-        res.json({
-            message: "Login successful",
-            user,
-            accessToken: generateAccessToken(user),
-            refreshToken: generateRefreshToken(user),
-        });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
-// ---------- GOOGLE LOGIN ----------
+// ------------------ GOOGLE LOGIN ------------------
 router.post("/google-login", async (req, res) => {
     try {
         const { credential } = req.body;
@@ -76,18 +29,21 @@ router.post("/google-login", async (req, res) => {
         });
 
         const payload = ticket.getPayload();
-        let user = await User.findOne({ email: payload.email });
+        if (!payload || !payload.email) return res.status(400).json({ message: "Invalid Google credential" });
 
+        let user = await User.findOne({ email: payload.email });
         if (!user) {
             user = await User.create({
-                name: payload.name,
+                name: payload.name || "Unknown",
                 email: payload.email,
-                picture: payload.picture,
+                picture: payload.picture || "",
                 googleId: payload.sub,
             });
         }
 
-        user.password = undefined;
+        user = user.toObject();
+        delete user.password;
+
         res.json({
             message: "Google login successful",
             user,
@@ -95,43 +51,59 @@ router.post("/google-login", async (req, res) => {
             refreshToken: generateRefreshToken(user),
         });
     } catch (error) {
+        console.error("Google login error:", error);
         res.status(500).json({ message: "Google login failed", error: error.message });
     }
 });
 
-// ---------- REFRESH TOKEN ----------
-router.post("/refresh-token", async (req, res) => {
-    const { refreshToken } = req.body;
-    if (!refreshToken) return res.status(401).json({ message: "No token provided" });
-
+// ------------------ MANUAL REGISTER ------------------
+router.post("/register", async (req, res) => {
     try {
-        const payload = jwt.verify(refreshToken, config.jwtRefreshSecret);
-        const user = await User.findById(payload.id);
-        if (!user) return res.status(404).json({ message: "User not found" });
+        const { name, email, password } = req.body;
+        if (!name || !email || !password)
+            return res.status(400).json({ message: "Name, email, and password are required" });
 
-        const newToken = generateAccessToken(user);
-        res.json({ accessToken: newToken });
-    } catch (err) {
-        return res.status(403).json({ message: "Invalid refresh token" });
+        const existingUser = await User.findOne({ email });
+        if (existingUser) return res.status(400).json({ message: "Email already in use" });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = await User.create({
+            name,
+            email,
+            password: hashedPassword,
+        });
+
+        const accessToken = generateAccessToken(user);
+        const refreshToken = generateRefreshToken(user);
+
+        user.password = undefined; // hide password
+        res.status(201).json({ message: "User registered", user, accessToken, refreshToken });
+    } catch (error) {
+        console.error("Register error:", error);
+        res.status(500).json({ message: "Registration failed", error: error.message });
     }
 });
 
-// ---------- ADMIN: CREATE USER ----------
-router.post("/", protect, adminMiddleware, async (req, res) => {
+// ------------------ MANUAL LOGIN ------------------
+router.post("/login", async (req, res) => {
     try {
-        const { name, email, password, role, company, country } = req.body;
+        const { email, password } = req.body;
+        if (!email || !password) return res.status(400).json({ message: "Email and password are required" });
 
-        const existingUser = await User.findOne({ email });
-        if (existingUser) return res.status(400).json({ message: "Email already exists" });
+        const user = await User.findOne({ email });
+        if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
-        const user = new User({ name, email, password, role, company, country });
-        if (!user.shortId) user.shortId = Math.random().toString(36).substring(2, 8);
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
 
-        await user.save();
-        user.password = undefined;
-        res.status(201).json(user);
-    } catch (err) {
-        res.status(400).json({ message: err.message });
+        const accessToken = generateAccessToken(user);
+        const refreshToken = generateRefreshToken(user);
+
+        user.password = undefined; // hide password
+        res.json({ message: "Login successful", user, accessToken, refreshToken });
+    } catch (error) {
+        console.error("Login error:", error);
+        res.status(500).json({ message: "Login failed", error: error.message });
     }
 });
 
